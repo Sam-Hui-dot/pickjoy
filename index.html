@@ -1,0 +1,29 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>精美抽奖转盘</title>
+    <link rel="stylesheet" href="style.css">
+</head>
+<body>
+    <div class="container">
+        <h1>If you have no idea, try me</h1>
+        
+        <div class="wheel-wrapper">
+            <div class="pointer"></div>
+            <canvas id="wheelCanvas" width="400" height="400"></canvas>
+            <button id="spinBtn">SPIN</button>
+        </div>
+
+        <div class="config-panel">
+            <h3>设置选项</h3>
+            <div id="itemList" class="item-list">
+                <!-- 动态生成 -->
+            </div>
+            <button id="addItemBtn" class="secondary-btn">+ 添加选项</button>
+        </div>
+    </div>
+    <script src="script.js"></script>
+</body>
+</html>
