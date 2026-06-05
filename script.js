@@ -254,10 +254,14 @@ function renderTemplates() {
   });
 }
 
-function renderItems() {
+function renderCounts() {
   const count = cleanItems().length;
   itemCount.textContent = `${count} 个选项`;
   previewCount.textContent = `${availableItems().length} 个`;
+}
+
+function renderItems() {
+  renderCounts();
   setNameInput.value = state.title;
   noRepeatToggle.checked = state.noRepeat;
   itemList.innerHTML = "";
@@ -276,12 +280,12 @@ function renderItems() {
       state.items[index].text = textInput.value.slice(0, 28);
       state.removedThisRound = [];
       saveState();
-      renderDynamic();
+      renderNonEditor();
     });
     weightInput.addEventListener("input", () => {
       state.items[index].weight = Math.max(1, Math.min(99, Number(weightInput.value || 1)));
       saveState();
-      renderDynamic();
+      renderNonEditor();
     });
     row.querySelector("button").addEventListener("click", () => deleteItem(index));
     itemList.appendChild(row);
@@ -336,16 +340,23 @@ function renderMode() {
   });
 }
 
-function renderDynamic() {
-  renderItems();
+function renderNonEditor() {
+  renderCounts();
   renderPreview();
   renderBoxes();
   drawWheel();
 }
 
+function renderDynamic() {
+  renderNonEditor();
+}
+
 function renderAll() {
   renderMode();
-  renderDynamic();
+  renderItems();
+  renderPreview();
+  renderBoxes();
+  drawWheel();
   renderHistory();
 }
 
@@ -592,7 +603,7 @@ noRepeatToggle.addEventListener("change", () => {
   state.noRepeat = noRepeatToggle.checked;
   state.removedThisRound = [];
   saveState();
-  renderAll();
+  renderNonEditor();
 });
 
 document.querySelector("#addItemBtn").addEventListener("click", addItem);
