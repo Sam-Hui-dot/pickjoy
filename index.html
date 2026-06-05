@@ -7,98 +7,109 @@
   <title>PickJoy - 选择困难破解器</title>
   <link rel="preconnect" href="https://fonts.googleapis.com">
   <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
-  <link href="https://fonts.googleapis.com/css2?family=Inter:wght@500;600;700;800&family=Noto+Sans+SC:wght@400;500;700;800&display=swap" rel="stylesheet">
+  <link href="https://fonts.googleapis.com/css2?family=Inter:wght@500;600;700;800;900&family=Noto+Sans+SC:wght@400;500;700;800;900&display=swap" rel="stylesheet">
   <link rel="stylesheet" href="style.css">
 </head>
 <body>
   <main class="app-shell">
-    <section class="play-zone" aria-label="PickJoy 抽取器">
-      <header class="hero">
-        <p class="eyebrow">PickJoy</p>
-        <h1>今天交给运气决定。</h1>
-        <p class="subtitle">吃什么、谁先来、奖励惩罚、任务选择。把犹豫丢进转盘，抽一下就走。</p>
-      </header>
-
-      <div class="mode-bar" role="tablist" aria-label="抽取模式">
-        <button class="mode-btn active" data-mode="wheel" type="button">转盘</button>
-        <button class="mode-btn" data-mode="cards" type="button">翻牌</button>
-        <button class="mode-btn" data-mode="dice" type="button">骰子</button>
+    <header class="topbar">
+      <div>
+        <p class="brand">PickJoy</p>
+        <h1><span>把犹豫交给</span><span>好玩的瞬间。</span></h1>
       </div>
+      <p class="tagline">吃什么、去哪、谁先来，都可以抽。</p>
+    </header>
 
-      <div class="stage">
-        <div class="wheel-card" data-view="wheel">
-          <div class="pointer" aria-hidden="true"></div>
-          <canvas id="wheelCanvas" width="760" height="760" aria-label="抽奖转盘"></canvas>
-          <button id="spinBtn" class="spin-btn" type="button">
-            <span>抽一下</span>
-          </button>
+    <div class="workspace">
+      <section class="experience" aria-label="抽取区域">
+        <div class="mode-tabs" role="tablist" aria-label="抽取方式">
+          <button class="mode-btn active" data-mode="wheel" type="button">转盘</button>
+          <button class="mode-btn" data-mode="box" type="button">盲盒</button>
         </div>
 
-        <div class="card-grid hidden" data-view="cards" aria-live="polite"></div>
-        <div class="dice-stage hidden" data-view="dice" aria-live="polite">
-          <button id="diceBtn" class="dice" type="button">?</button>
-          <p>点击骰子，从当前选项里随机挑一个。</p>
-        </div>
-      </div>
+        <section class="scene wheel-scene" data-view="wheel">
+          <div class="wheel-wrap">
+            <div class="pointer" aria-hidden="true"></div>
+            <canvas id="wheelCanvas" width="900" height="900" aria-label="选择转盘"></canvas>
+            <div class="wheel-hub" aria-hidden="true">Pick</div>
+          </div>
+          <div class="stage-actions">
+            <button id="spinBtn" class="primary-action" type="button">开始转</button>
+            <button id="quickBtn" class="secondary-action" type="button">快抽一次</button>
+          </div>
+        </section>
 
-      <div class="quick-actions">
-        <button id="surpriseBtn" class="ghost-btn" type="button">随机模板</button>
-        <button id="shareBtn" class="ghost-btn" type="button">复制分享链接</button>
-        <button id="resetBtn" class="ghost-btn danger" type="button">重置</button>
-      </div>
-    </section>
+        <section class="scene box-scene hidden" data-view="box">
+          <div class="box-copy">
+            <h2>盲盒模式</h2>
+            <p>选项先藏起来，点击开始后高亮乱跳，最后打开一个结果。适合朋友聚会、惩罚奖励、谁来做这种场景。</p>
+          </div>
+          <div id="boxGrid" class="box-grid" aria-live="polite"></div>
+          <div class="stage-actions">
+            <button id="boxBtn" class="primary-action" type="button">开始盲抽</button>
+          </div>
+        </section>
 
-    <aside class="control-panel" aria-label="选项设置">
-      <section class="panel-section">
-        <div class="section-title">
-          <p>当前盘</p>
-          <strong id="itemCount">0 个选项</strong>
-        </div>
-        <input id="setNameInput" class="title-input" type="text" maxlength="24" aria-label="当前抽奖盘名称">
-        <label class="toggle-row">
-          <input id="noRepeatToggle" type="checkbox">
-          <span>抽过先移出本轮</span>
-        </label>
+        <section class="option-preview" aria-label="当前可抽选项">
+          <div class="section-head">
+            <span>当前可抽</span>
+            <strong id="previewCount">0 个</strong>
+          </div>
+          <div id="previewChips" class="preview-chips"></div>
+        </section>
+
+        <section id="resultPanel" class="result-panel empty" aria-live="polite">
+          <span>结果</span>
+          <strong id="resultText">还没抽</strong>
+          <p id="resultMeta">选个模板或自己填选项，然后开始。</p>
+        </section>
       </section>
 
-      <section class="panel-section">
-        <div class="section-title">
-          <p>模板</p>
-          <strong>一键换场景</strong>
-        </div>
-        <div id="templateList" class="template-list"></div>
-      </section>
+      <aside class="control-panel" aria-label="设置区域">
+        <section class="panel-section">
+          <div class="section-head">
+            <span>当前盘</span>
+            <strong id="itemCount">0 个选项</strong>
+          </div>
+          <input id="setNameInput" class="title-input" type="text" maxlength="24" aria-label="抽奖盘名称">
+          <label class="toggle-row">
+            <input id="noRepeatToggle" type="checkbox">
+            <span>抽过的先移出本轮</span>
+          </label>
+        </section>
 
-      <section class="panel-section grow">
-        <div class="section-title">
-          <p>选项</p>
-          <button id="addItemBtn" class="small-btn" type="button">添加</button>
-        </div>
-        <div id="itemList" class="item-list"></div>
-      </section>
+        <section class="panel-section">
+          <div class="section-head">
+            <span>模板</span>
+            <strong>换场景</strong>
+          </div>
+          <div id="templateList" class="template-list"></div>
+        </section>
 
-      <section class="panel-section">
-        <div class="section-title">
-          <p>最近结果</p>
-          <button id="clearHistoryBtn" class="small-btn muted" type="button">清空</button>
-        </div>
-        <ol id="historyList" class="history-list"></ol>
-      </section>
-    </aside>
-  </main>
+        <section class="panel-section">
+          <div class="section-head">
+            <span>选项</span>
+            <button id="addItemBtn" class="small-btn" type="button">添加</button>
+          </div>
+          <div id="itemList" class="item-list"></div>
+        </section>
 
-  <dialog id="resultDialog" class="result-dialog">
-    <div class="result-card">
-      <p class="result-label">抽中了</p>
-      <h2 id="resultText"></h2>
-      <p id="resultMeta"></p>
-      <div class="result-actions">
-        <button id="againBtn" class="primary-btn" type="button">再抽一次</button>
-        <button id="copyResultBtn" class="secondary-btn" type="button">复制结果</button>
-        <button id="closeDialogBtn" class="secondary-btn" type="button">收起</button>
-      </div>
+        <section class="panel-section">
+          <div class="section-head">
+            <span>最近结果</span>
+            <button id="clearHistoryBtn" class="small-btn quiet" type="button">清空</button>
+          </div>
+          <ol id="historyList" class="history-list"></ol>
+        </section>
+
+        <section class="panel-section actions-panel">
+          <button id="surpriseBtn" class="line-btn" type="button">随机模板</button>
+          <button id="shareBtn" class="line-btn" type="button">复制分享链接</button>
+          <button id="resetBtn" class="line-btn danger" type="button">重置</button>
+        </section>
+      </aside>
     </div>
-  </dialog>
+  </main>
 
   <div id="toast" class="toast" role="status" aria-live="polite"></div>
   <script src="script.js"></script>

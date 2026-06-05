@@ -1,28 +1,36 @@
 const canvas = document.querySelector("#wheelCanvas");
 const ctx = canvas.getContext("2d");
 const spinBtn = document.querySelector("#spinBtn");
+const quickBtn = document.querySelector("#quickBtn");
+const boxBtn = document.querySelector("#boxBtn");
 const itemList = document.querySelector("#itemList");
 const templateList = document.querySelector("#templateList");
 const historyList = document.querySelector("#historyList");
 const itemCount = document.querySelector("#itemCount");
+const previewCount = document.querySelector("#previewCount");
+const previewChips = document.querySelector("#previewChips");
 const setNameInput = document.querySelector("#setNameInput");
 const noRepeatToggle = document.querySelector("#noRepeatToggle");
-const resultDialog = document.querySelector("#resultDialog");
+const resultPanel = document.querySelector("#resultPanel");
 const resultText = document.querySelector("#resultText");
 const resultMeta = document.querySelector("#resultMeta");
 const toast = document.querySelector("#toast");
-const cardGrid = document.querySelector(".card-grid");
-const diceBtn = document.querySelector("#diceBtn");
+const boxGrid = document.querySelector("#boxGrid");
 
 const TAU = Math.PI * 2;
-const STORAGE_KEY = "pickjoy-state-v1";
-const palette = ["#ff5a3d", "#1d9a8a", "#4f73d9", "#f0b631", "#a05bd8", "#5c9d3b", "#ef7d45", "#2f9fb3"];
+const STORAGE_KEY = "pickjoy-state-v2";
+const palette = ["#ff6048", "#159a8b", "#4d73d9", "#f0b631", "#9a61d6", "#5b9e3d", "#ef7d45", "#2d9db0", "#d94f7b"];
 
 const templates = [
   {
     name: "吃什么",
     title: "今天吃什么",
     items: ["火锅", "烧烤", "寿司", "面条", "汉堡", "米饭套餐", "轻食", "随便走进一家"]
+  },
+  {
+    name: "去哪",
+    title: "周末去哪",
+    items: ["看电影", "逛公园", "找家咖啡店", "城市漫步", "在家做饭", "去书店", "拍照"]
   },
   {
     name: "谁来",
@@ -43,16 +51,11 @@ const templates = [
     name: "学习",
     title: "学习任务抽取",
     items: ["背 20 个单词", "刷 10 道题", "复盘笔记", "读 15 分钟", "写一段总结", "休息 5 分钟"]
-  },
-  {
-    name: "周末",
-    title: "周末去哪",
-    items: ["看电影", "逛公园", "找家咖啡店", "城市漫步", "在家做饭", "去书店", "拍照"]
   }
 ];
 
 let state = {
-  title: "选择困难破解器",
+  title: "今天吃什么",
   mode: "wheel",
   noRepeat: false,
   rotation: 0,
@@ -61,27 +64,20 @@ let state = {
   items: templates[0].items.map((text) => ({ text, weight: 1 }))
 };
 
-let isSpinning = false;
-let activeResult = "";
+let isPicking = false;
 
 function normalizeAngle(angle) {
   return ((angle % TAU) + TAU) % TAU;
 }
 
-function weightedPick(items) {
-  const total = items.reduce((sum, item) => sum + Number(item.weight || 1), 0);
-  let ticket = Math.random() * total;
-
-  for (let index = 0; index < items.length; index += 1) {
-    ticket -= Number(items[index].weight || 1);
-    if (ticket <= 0) return index;
-  }
-
-  return items.length - 1;
+function cleanItems() {
+  return state.items
+    .map((item) => ({ text: String(item.text || "").trim(), weight: Math.max(1, Number(item.weight || 1)) }))
+    .filter((item) => item.text);
 }
 
-function visibleItems() {
-  const usable = state.items.filter((item) => item.text.trim());
+function availableItems() {
+  const usable = cleanItems();
   if (!state.noRepeat) return usable;
 
   const filtered = usable.filter((item) => !state.removedThisRound.includes(item.text));
@@ -91,15 +87,26 @@ function visibleItems() {
   return usable;
 }
 
+function weightedPick(items) {
+  const total = items.reduce((sum, item) => sum + item.weight, 0);
+  let ticket = Math.random() * total;
+
+  for (let index = 0; index < items.length; index += 1) {
+    ticket -= items[index].weight;
+    if (ticket <= 0) return index;
+  }
+
+  return items.length - 1;
+}
+
 function getSegments(items) {
-  const total = items.reduce((sum, item) => sum + Number(item.weight || 1), 0);
+  const total = items.reduce((sum, item) => sum + item.weight, 0);
   let angle = -Math.PI / 2;
 
-  return items.map((item, index) => {
-    const size = (Number(item.weight || 1) / total) * TAU;
+  return items.map((item) => {
+    const size = (item.weight / total) * TAU;
     const segment = {
       item,
-      index,
       start: angle,
       end: angle + size,
       center: angle + size / 2
@@ -110,30 +117,38 @@ function getSegments(items) {
 }
 
 function drawWheel() {
-  const items = visibleItems();
+  const items = availableItems();
   const size = canvas.width;
   const center = size / 2;
-  const radius = center - 24;
+  const radius = center - 34;
 
   ctx.clearRect(0, 0, size, size);
+
   ctx.save();
   ctx.translate(center, center);
   ctx.rotate(state.rotation);
 
   if (items.length < 2) {
-    ctx.fillStyle = "#fff5dc";
     ctx.beginPath();
     ctx.arc(0, 0, radius, 0, TAU);
+    ctx.fillStyle = "#fff5df";
     ctx.fill();
-    ctx.fillStyle = "#6b6258";
-    ctx.font = "700 34px Inter, sans-serif";
-    ctx.textAlign = "center";
-    ctx.fillText("至少需要两个选项", 0, 10);
+    ctx.lineWidth = 14;
+    ctx.strokeStyle = "#1f2024";
+    ctx.stroke();
     ctx.restore();
+
+    ctx.fillStyle = "#746b5f";
+    ctx.font = "800 36px Inter, Noto Sans SC, sans-serif";
+    ctx.textAlign = "center";
+    ctx.textBaseline = "middle";
+    ctx.fillText("至少两个选项", center, center);
     return;
   }
 
-  getSegments(items).forEach((segment, index) => {
+  const segments = getSegments(items);
+
+  segments.forEach((segment, index) => {
     ctx.beginPath();
     ctx.moveTo(0, 0);
     ctx.arc(0, 0, radius, segment.start, segment.end);
@@ -141,26 +156,46 @@ function drawWheel() {
     ctx.fillStyle = palette[index % palette.length];
     ctx.fill();
     ctx.lineWidth = 8;
-    ctx.strokeStyle = "#fffaf1";
+    ctx.strokeStyle = "#fffdf8";
     ctx.stroke();
-
-    ctx.save();
-    ctx.rotate(segment.center);
-    ctx.textAlign = "right";
-    ctx.textBaseline = "middle";
-    ctx.fillStyle = "#fffaf1";
-    ctx.font = "800 32px Inter, Noto Sans SC, sans-serif";
-    const label = segment.item.text.length > 9 ? `${segment.item.text.slice(0, 9)}...` : segment.item.text;
-    ctx.fillText(label, radius - 34, 0);
-    ctx.restore();
   });
 
   ctx.beginPath();
   ctx.arc(0, 0, radius, 0, TAU);
-  ctx.lineWidth = 12;
-  ctx.strokeStyle = "#202124";
+  ctx.lineWidth = 14;
+  ctx.strokeStyle = "#1f2024";
   ctx.stroke();
   ctx.restore();
+
+  // Draw labels after the wheel so every label remains horizontal and readable.
+  segments.forEach((segment) => {
+    const angle = segment.center + state.rotation;
+    const x = center + Math.cos(angle) * radius * 0.6;
+    const y = center + Math.sin(angle) * radius * 0.6;
+    const label = segment.item.text.length > 8 ? `${segment.item.text.slice(0, 8)}...` : segment.item.text;
+
+    ctx.save();
+    ctx.translate(x, y);
+    ctx.fillStyle = "rgba(31, 32, 36, 0.18)";
+    roundedRect(ctx, -86, -22, 172, 44, 22);
+    ctx.fill();
+    ctx.fillStyle = "#fffdf8";
+    ctx.font = "900 27px Inter, Noto Sans SC, sans-serif";
+    ctx.textAlign = "center";
+    ctx.textBaseline = "middle";
+    ctx.fillText(label, 0, 1, 150);
+    ctx.restore();
+  });
+}
+
+function roundedRect(context, x, y, width, height, radius) {
+  context.beginPath();
+  context.moveTo(x + radius, y);
+  context.arcTo(x + width, y, x + width, y + height, radius);
+  context.arcTo(x + width, y + height, x, y + height, radius);
+  context.arcTo(x, y + height, x, y, radius);
+  context.arcTo(x, y, x + width, y, radius);
+  context.closePath();
 }
 
 function saveState() {
@@ -168,7 +203,7 @@ function saveState() {
     title: state.title,
     items: state.items,
     noRepeat: state.noRepeat,
-    history: state.history.slice(0, 12)
+    history: state.history.slice(0, 20)
   }));
 }
 
@@ -199,7 +234,7 @@ function loadState() {
       ...state,
       title: saved.title || state.title,
       noRepeat: Boolean(saved.noRepeat),
-      history: Array.isArray(saved.history) ? saved.history.slice(0, 12) : [],
+      history: Array.isArray(saved.history) ? saved.history.slice(0, 20) : [],
       items: Array.isArray(saved.items) && saved.items.length >= 2 ? saved.items : state.items
     };
   } catch {
@@ -220,8 +255,9 @@ function renderTemplates() {
 }
 
 function renderItems() {
-  const cleanCount = state.items.filter((item) => item.text.trim()).length;
-  itemCount.textContent = `${cleanCount} 个选项`;
+  const count = cleanItems().length;
+  itemCount.textContent = `${count} 个选项`;
+  previewCount.textContent = `${availableItems().length} 个`;
   setNameInput.value = state.title;
   noRepeatToggle.checked = state.noRepeat;
   itemList.innerHTML = "";
@@ -239,17 +275,26 @@ function renderItems() {
     textInput.addEventListener("input", () => {
       state.items[index].text = textInput.value.slice(0, 28);
       state.removedThisRound = [];
-      drawWheel();
-      renderCards();
       saveState();
+      renderDynamic();
     });
     weightInput.addEventListener("input", () => {
       state.items[index].weight = Math.max(1, Math.min(99, Number(weightInput.value || 1)));
-      drawWheel();
       saveState();
+      renderDynamic();
     });
     row.querySelector("button").addEventListener("click", () => deleteItem(index));
     itemList.appendChild(row);
+  });
+}
+
+function renderPreview() {
+  previewChips.innerHTML = "";
+  availableItems().forEach((item) => {
+    const chip = document.createElement("span");
+    chip.className = "preview-chip";
+    chip.textContent = item.weight > 1 ? `${item.text} ×${item.weight}` : item.text;
+    previewChips.appendChild(chip);
   });
 }
 
@@ -269,19 +314,16 @@ function renderHistory() {
   });
 }
 
-function renderCards() {
-  const items = visibleItems();
-  cardGrid.innerHTML = "";
-  items.forEach((item) => {
-    const card = document.createElement("button");
-    card.className = "choice-card";
-    card.type = "button";
-    card.textContent = item.text;
-    card.addEventListener("click", () => {
-      card.classList.add("revealed");
-      finishPick(item.text, "翻牌抽取");
-    });
-    cardGrid.appendChild(card);
+function renderBoxes(revealedWinner = "") {
+  const items = availableItems();
+  boxGrid.innerHTML = "";
+  items.forEach((item, index) => {
+    const card = document.createElement("div");
+    card.className = `mystery-card ${revealedWinner ? "" : "is-hidden"}`;
+    if (item.text === revealedWinner) card.classList.add("is-winner");
+    card.dataset.index = String(index);
+    card.innerHTML = `<span>盲盒 ${index + 1}</span><strong>${escapeHtml(item.text)}</strong>`;
+    boxGrid.appendChild(card);
   });
 }
 
@@ -294,12 +336,17 @@ function renderMode() {
   });
 }
 
+function renderDynamic() {
+  renderItems();
+  renderPreview();
+  renderBoxes();
+  drawWheel();
+}
+
 function renderAll() {
   renderMode();
-  renderItems();
+  renderDynamic();
   renderHistory();
-  renderCards();
-  drawWheel();
 }
 
 function applyTemplate(template) {
@@ -308,6 +355,7 @@ function applyTemplate(template) {
   state.history = [];
   state.removedThisRound = [];
   state.rotation = 0;
+  setResult("还没抽", `${template.title} 已载入。`, true);
   showToast(`已切换到「${template.title}」`);
   saveState();
   renderAll();
@@ -333,14 +381,16 @@ function addItem() {
 }
 
 function spinWheel() {
-  const items = visibleItems();
-  if (isSpinning || items.length < 2) {
+  const items = availableItems();
+  if (isPicking || items.length < 2) {
     showToast("至少需要两个可用选项");
     return;
   }
 
-  isSpinning = true;
+  isPicking = true;
   spinBtn.disabled = true;
+  quickBtn.disabled = true;
+  setResult("转动中...", "等它停下来，不会马上弹窗。", true);
 
   const winnerIndex = weightedPick(items);
   const segment = getSegments(items)[winnerIndex];
@@ -348,13 +398,13 @@ function spinWheel() {
   const currentNorm = normalizeAngle(state.rotation);
   const delta = normalizeAngle(desiredRotation - currentNorm);
   const start = state.rotation;
-  const end = state.rotation + delta + TAU * (5 + Math.floor(Math.random() * 3));
-  const duration = 3800;
+  const end = state.rotation + delta + TAU * (6 + Math.floor(Math.random() * 3));
+  const duration = 4200;
   const startedAt = performance.now();
 
   function tick(now) {
     const progress = Math.min(1, (now - startedAt) / duration);
-    const eased = 1 - Math.pow(1 - progress, 4);
+    const eased = 1 - Math.pow(1 - progress, 4.2);
     state.rotation = start + (end - start) * eased;
     drawWheel();
 
@@ -364,53 +414,98 @@ function spinWheel() {
     }
 
     state.rotation = normalizeAngle(end);
-    isSpinning = false;
+    isPicking = false;
     spinBtn.disabled = false;
+    quickBtn.disabled = false;
     drawWheel();
-    finishPick(items[winnerIndex].text, "转盘抽取");
+    finishPick(items[winnerIndex].text, "转盘");
   }
 
   requestAnimationFrame(tick);
 }
 
-function quickPick(source) {
-  const items = visibleItems();
-  if (items.length < 2) {
+function quickPick() {
+  const items = availableItems();
+  if (isPicking || items.length < 2) {
     showToast("至少需要两个可用选项");
     return;
   }
+
+  isPicking = true;
+  spinBtn.disabled = true;
+  quickBtn.disabled = true;
   const winner = items[weightedPick(items)].text;
-  diceBtn.textContent = String(Math.max(1, Math.ceil(Math.random() * 6)));
-  finishPick(winner, source);
+  let frame = 0;
+  const totalFrames = 26;
+
+  const timer = setInterval(() => {
+    const item = items[frame % items.length];
+    setResult(item.text, "快抽滚动中...", true);
+    frame += 1;
+
+    if (frame >= totalFrames) {
+      clearInterval(timer);
+      isPicking = false;
+      spinBtn.disabled = false;
+      quickBtn.disabled = false;
+      finishPick(winner, "快抽");
+    }
+  }, 70);
+}
+
+function boxPick() {
+  const items = availableItems();
+  if (isPicking || items.length < 2) {
+    showToast("至少需要两个可用选项");
+    return;
+  }
+
+  isPicking = true;
+  boxBtn.disabled = true;
+  renderBoxes();
+  const winnerIndex = weightedPick(items);
+  let frame = 0;
+  const totalFrames = 34;
+
+  const timer = setInterval(() => {
+    document.querySelectorAll(".mystery-card").forEach((card) => card.classList.remove("is-active"));
+    const active = document.querySelector(`.mystery-card[data-index="${frame % items.length}"]`);
+    active?.classList.add("is-active");
+    frame += 1;
+
+    if (frame >= totalFrames) {
+      clearInterval(timer);
+      isPicking = false;
+      boxBtn.disabled = false;
+      renderBoxes(items[winnerIndex].text);
+      finishPick(items[winnerIndex].text, "盲盒");
+    }
+  }, 76);
 }
 
 function finishPick(value, source) {
-  activeResult = value;
   state.history.unshift(value);
   state.history = state.history.slice(0, 20);
+
   if (state.noRepeat && !state.removedThisRound.includes(value)) {
     state.removedThisRound.push(value);
   }
-  resultText.textContent = value;
-  resultMeta.textContent = `${state.title} · ${source}`;
+
+  setResult(value, `${state.title} · ${source}抽取`, false);
   saveState();
   renderHistory();
-  renderCards();
+  renderPreview();
   drawWheel();
   playPop();
-  openDialog();
 }
 
-function openDialog() {
-  if (typeof resultDialog.showModal === "function") {
-    resultDialog.showModal();
-  } else {
-    showToast(`抽中了：${activeResult}`);
-  }
-}
-
-function closeDialog() {
-  if (resultDialog.open) resultDialog.close();
+function setResult(value, meta, empty) {
+  resultText.textContent = value;
+  resultMeta.textContent = meta;
+  resultPanel.classList.toggle("empty", Boolean(empty));
+  resultPanel.classList.remove("flash");
+  void resultPanel.offsetWidth;
+  resultPanel.classList.add("flash");
 }
 
 async function copyText(text) {
@@ -425,9 +520,9 @@ async function copyText(text) {
 function shareCurrentSet() {
   const payload = {
     title: state.title,
-    items: state.items.filter((item) => item.text.trim()).map((item) => ({
-      text: item.text.trim(),
-      weight: Number(item.weight || 1)
+    items: cleanItems().map((item) => ({
+      text: item.text,
+      weight: item.weight
     }))
   };
   const encoded = btoa(encodeURIComponent(JSON.stringify(payload)));
@@ -437,7 +532,7 @@ function shareCurrentSet() {
 
 function resetAll() {
   applyTemplate(templates[0]);
-  showToast("已重置为默认盘");
+  showToast("已重置");
 }
 
 function surpriseTemplate() {
@@ -449,7 +544,7 @@ function showToast(message) {
   toast.textContent = message;
   toast.classList.add("show");
   clearTimeout(showToast.timer);
-  showToast.timer = setTimeout(() => toast.classList.remove("show"), 1800);
+  showToast.timer = setTimeout(() => toast.classList.remove("show"), 1700);
 }
 
 function escapeHtml(value) {
@@ -467,17 +562,17 @@ function playPop() {
     const oscillator = audio.createOscillator();
     const gain = audio.createGain();
     oscillator.type = "triangle";
-    oscillator.frequency.setValueAtTime(440, audio.currentTime);
-    oscillator.frequency.exponentialRampToValueAtTime(780, audio.currentTime + 0.12);
+    oscillator.frequency.setValueAtTime(360, audio.currentTime);
+    oscillator.frequency.exponentialRampToValueAtTime(760, audio.currentTime + 0.16);
     gain.gain.setValueAtTime(0.0001, audio.currentTime);
-    gain.gain.exponentialRampToValueAtTime(0.16, audio.currentTime + 0.02);
-    gain.gain.exponentialRampToValueAtTime(0.0001, audio.currentTime + 0.18);
+    gain.gain.exponentialRampToValueAtTime(0.13, audio.currentTime + 0.02);
+    gain.gain.exponentialRampToValueAtTime(0.0001, audio.currentTime + 0.2);
     oscillator.connect(gain);
     gain.connect(audio.destination);
     oscillator.start();
-    oscillator.stop(audio.currentTime + 0.2);
+    oscillator.stop(audio.currentTime + 0.22);
   } catch {
-    // Audio is optional. Some browsers block it until direct user input.
+    // Sound is optional.
   }
 }
 
@@ -509,14 +604,9 @@ document.querySelector("#clearHistoryBtn").addEventListener("click", () => {
   saveState();
   renderHistory();
 });
-document.querySelector("#againBtn").addEventListener("click", () => {
-  closeDialog();
-  state.mode === "wheel" ? spinWheel() : quickPick("快速抽取");
-});
-document.querySelector("#copyResultBtn").addEventListener("click", () => copyText(activeResult));
-document.querySelector("#closeDialogBtn").addEventListener("click", closeDialog);
 spinBtn.addEventListener("click", spinWheel);
-diceBtn.addEventListener("click", () => quickPick("骰子抽取"));
+quickBtn.addEventListener("click", quickPick);
+boxBtn.addEventListener("click", boxPick);
 
 loadState();
 renderTemplates();
